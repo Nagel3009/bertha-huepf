@@ -454,7 +454,9 @@
 
                 this.cx = w / 2;
                 this.cy = h / 2;
-                this.circleRadius = Math.min(w, h) * 0.25;
+
+                const radiusFactor = w < 768 ? 0.3 : 0.25;
+                this.circleRadius = Math.min(w, h) * radiusFactor;
 
                 this.characterOffset = this.circleRadius * 0.144;
                 this.maxJumpHeight = this.circleRadius * 0.472;
