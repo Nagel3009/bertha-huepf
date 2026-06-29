@@ -355,6 +355,7 @@
                 if (Math.floor(this.berthaAngle / (Math.PI * 2)) > Math.floor(prevBerthaAngle / (Math.PI * 2))) {
                     this.laps++;
                     this.berthaSpeed += 0.05;
+                    this.foxSpeed += 0.04;
                     this.els.roundsDisplay.innerText = this.laps;
                     
                     if (this.laps % 5 === 0 && this.laps > 0) {
@@ -433,6 +434,7 @@
                     this.berthaAngle = 0;
                     this.foxAngle = Math.PI;
                     this.berthaSpeed = this.baseSpeed;
+                    this.foxSpeed = this.baseSpeed * 0.9;
                     this.els.roundsDisplay.innerText = 0;
                     
                     this.generateFlowers(20);
