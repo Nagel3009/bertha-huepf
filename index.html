@@ -126,7 +126,7 @@
                     <span id="summary-jumps" class="text-2xl font-bold text-slate-800">0</span>
                 </div>
                 <div class="flex justify-between items-center border-b border-slate-100 pb-4">
-                    <span class="text-slate-500 text-lg">Anzahl an Runden</span>
+                    <span class="text-slate-500 text-lg">Abgeschlossene Runden</span>
                     <span id="summary-rounds" class="text-3xl font-black text-green-500">0</span>
                 </div>
                 <div class="flex justify-between items-center pb-2">
@@ -474,6 +474,7 @@
             renderLoop(timestamp) {
                 if (!this.lastTime) this.lastTime = timestamp;
                 let deltaTime = (timestamp - this.lastTime) / 1000;
+                if (deltaTime < 0) deltaTime = 0;
                 if (deltaTime > 0.1) deltaTime = 0.1;
                 this.lastTime = timestamp;
 
