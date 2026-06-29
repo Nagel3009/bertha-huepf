@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bertha, hüpf!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(to bottom, #bae6fd, #f0fdf4);
+            color: #1e293b;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        .garden-shadow { box-shadow: 0 10px 25px -5px rgba(34, 197, 94, 0.2), 0 8px 10px -6px rgba(34, 197, 94, 0.2); }
+        .btn-shadow { box-shadow: 0 10px 20px -5px rgba(34, 197, 94, 0.4); }
+
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .fade-out { animation: fadeOut 0.5s ease-out forwards; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.95); }
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .btn-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+            filter: grayscale(50%);
+        }
+    </style>
+</head>
+<body class="w-screen h-dvh flex flex-col relative select-none">
+
+    <div id="start-screen" class="absolute inset-0 z-20 overflow-y-auto bg-gradient-to-b from-sky-200 to-green-50 transition-opacity duration-500">
+        <div class="min-h-full flex flex-col items-center justify-center px-8 py-10 mx-auto max-w-2xl">
+            
+            <h1 class="text-4xl md:text-6xl font-black mb-10 tracking-tighter uppercase text-center text-green-600 drop-shadow-sm">
+                Bertha, <span class="text-transparent bg-clip-text bg-gradient-to-r from-green-500 to-amber-500">hüpf!</span>
+            </h1>
+
+            <div class="w-full mb-12">
+                <div class="bg-white rounded-3xl p-8 flex flex-col items-center border border-green-100 shadow-xl transform transition hover:-translate-y-1">
+                    <img src="bertha_icon.png" alt="Bertha" class="w-32 h-32 mb-4 object-contain rounded-full bg-amber-50 p-2 border-4 border-amber-200">
+                    <h2 class="text-3xl font-bold text-slate-800 mb-2">Bertha</h2>
+                    <p class="text-center text-base text-slate-600 max-w-sm">
+                        Flauschig im Look, furchtlos im Garten. Sie liebt ihr grünes Revier und lässt sich von keinem Fuchs die Show stehlen.
+                    </p>
+                </div>
+            </div>
+
+            <button onclick="app.showGameScreen()" class="px-10 py-5 bg-green-500 text-white font-bold text-2xl rounded-full btn-shadow hover:bg-green-400 hover:scale-105 transition-all shrink-0">
+                Ab in den Garten
+            </button>
+            
+        </div>
+    </div>
+
+    <div id="game-screen" class="hidden absolute inset-0 z-0 flex-col bg-gradient-to-b from-sky-200 to-green-50">
+        
+        <div class="absolute top-0 left-0 w-full p-4 md:p-6 flex justify-between items-center z-20 pointer-events-none">
+            <h2 class="text-xl md:text-2xl font-black text-green-600 uppercase tracking-wider drop-shadow-sm">Im Garten</h2>
+            <div class="flex items-center bg-white/90 backdrop-blur-md px-4 md:px-6 py-2 rounded-full border border-green-100 shadow-sm">
+                <span class="text-xs md:text-sm text-slate-500 uppercase font-bold mr-2">Runden:</span>
+                <span id="rounds-display" class="text-xl md:text-2xl font-black text-green-500">0</span>
+            </div>
+        </div>
+
+        <div id="canvas-container" class="flex-grow relative w-full overflow-hidden">
+            <canvas id="game-canvas"></canvas>
+            
+            <div id="countdown-overlay" class="hidden absolute inset-0 flex items-center justify-center z-30 pointer-events-none bg-white/20 backdrop-blur-sm">
+                <span id="countdown-text" class="text-8xl md:text-9xl font-black text-amber-500 drop-shadow-[0_10px_15px_rgba(34,197,94,0.4)]">3</span>
+            </div>
+
+            <div id="milestone-overlay" class="hidden absolute inset-0 flex items-center justify-center z-30 pointer-events-none p-4">
+                <div class="bg-white/90 backdrop-blur-md border border-green-100 p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-xl flex flex-col items-center min-w-[180px] md:min-w-[260px] max-w-[90%]">
+                    <h3 class="text-xl md:text-3xl font-black text-green-600 uppercase tracking-wider mb-1 text-center">Großartig!</h3>
+                    <p id="milestone-text" class="text-lg md:text-2xl font-black text-amber-500 animate-pop text-center"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white/80 backdrop-blur-md border-t border-green-100 p-6 z-20 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+            <div class="max-w-md mx-auto">
+                <button id="action-btn" onclick="app.handleAction()" class="w-full bg-green-500 hover:bg-green-400 text-white font-black py-5 rounded-2xl text-2xl tracking-wide uppercase transition-all transform active:scale-95 btn-shadow">
+                    Spiel Starten
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="summary-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md opacity-0 transition-opacity duration-300">
+        <div class="bg-white border border-green-100 rounded-3xl p-8 md:p-12 shadow-2xl max-w-md w-full mx-4 transform scale-95 transition-transform duration-300" id="summary-box">
+            <h2 class="text-3xl font-black text-center mb-8 uppercase text-amber-500 tracking-widest drop-shadow-sm">Hoppala!</h2>
+            
+            <div class="space-y-6 mb-10">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+                    <span class="text-slate-500 text-lg">Anzahl an Sprüngen</span>
+                    <span id="summary-jumps" class="text-2xl font-bold text-slate-800">0</span>
+                </div>
+                <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+                    <span class="text-slate-500 text-lg">Anzahl an Runden</span>
+                    <span id="summary-rounds" class="text-3xl font-black text-green-500">0</span>
+                </div>
+                <div class="flex justify-between items-center pb-2">
+                    <span class="text-slate-500 text-lg">Datum</span>
+                    <span id="summary-time" class="text-xl font-bold text-slate-600">00.00.00 • 00:00 Uhr</span>
+                </div>
+            </div>
+
+            <button onclick="app.restartGame()" class="w-full py-4 bg-green-500 text-white font-bold text-xl rounded-xl hover:bg-green-400 transition-colors btn-shadow">
+                Neu starten
+            </button>
+        </div>
+    </div>
+
+    <script>
+        class BerthaHopGame {
+            constructor() {
+                this.laps = 0;
+                this.jumps = 0;
+                this.gameState = 'menu';
+                this.lastTime = 0;
+                
+                this.berthaAngle = 0;
+                this.foxAngle = Math.PI;
+                
+                this.baseSpeed = 1;
+                this.berthaSpeed = this.baseSpeed;
+                this.foxSpeed = this.baseSpeed * 0.9;
+                
+                this.isJumping = false;
+                this.jumpTimer = 0;
+                this.jumpDuration = 0.6;
+
+                this.maxJumpHeight = 85;
+                this.characterOffset = 26;
+                this.collisionThreshold = 48;
+                this.berthaSize = 48;
+                this.foxWidth = 96;
+                this.foxHeight = 48;
+                
+                this.milestoneTimeout = null;
+                this.milestoneHideTimeout = null;
+
+                this.clouds = [];
+                this.generateClouds(5);
+
+                this.flowers = [];
+                this.generateFlowers(20);
+
+                this.scenery = [];
+                this.generateScenery(15);
+
+                this.els = {
+                    startScreen: document.getElementById('start-screen'),
+                    gameScreen: document.getElementById('game-screen'),
+                    summaryModal: document.getElementById('summary-modal'),
+                    summaryBox: document.getElementById('summary-box'),
+                    roundsDisplay: document.getElementById('rounds-display'),
+                    countdownOverlay: document.getElementById('countdown-overlay'),
+                    countdownText: document.getElementById('countdown-text'),
+                    actionBtn: document.getElementById('action-btn'),
+                    summaryJumps: document.getElementById('summary-jumps'),
+                    summaryRounds: document.getElementById('summary-rounds'),
+                    summaryTime: document.getElementById('summary-time'),
+                    milestoneOverlay: document.getElementById('milestone-overlay'),
+                    milestoneText: document.getElementById('milestone-text')
+                };
+
+                this.gameCanvas = document.getElementById('game-canvas');
+                this.gameCtx = this.gameCanvas.getContext('2d');
+                
+                this.bgCanvas = document.createElement('canvas');
+                this.bgCtx = this.bgCanvas.getContext('2d');
+                
+                this.berthaImg = new Image();
+                this.berthaImg.src = 'bertha.png';
+                this.foxImg = new Image();
+                this.foxImg.src = 'fuchs.png';
+
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+
+                this.animationReq = requestAnimationFrame((ts) => this.renderLoop(ts));
+            }
+
+            generateClouds(count) {
+                this.clouds = [];
+                for (let i = 0; i < count; i++) {
+                    this.clouds.push({
+                        angle: Math.random() * Math.PI * 2,
+                        distanceFactor: 1.6 + Math.random() * 0.4,
+                        speed: (Math.random() * 0.03 + 0.01) * (Math.random() < 0.5 ? 1 : -1),
+                        size: 0.6 + Math.random() * 0.7,
+                        opacity: 0.7 + Math.random() * 0.2
+                    });
+                }
+            }
+
+            generateFlowers(count) {
+                this.flowers = [];
+                const colors = ['#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#eab308', '#f97316', '#3b82f6'];
+                
+                for (let i = 0; i < count; i++) {
+                    this.flowers.push({
+                        angle: Math.random() * Math.PI * 2,
+                        radiusFactor: Math.sqrt(Math.random()) * 0.9,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        size: 3 + Math.random() * 4,
+                        petals: 5 + Math.floor(Math.random() * 3)
+                    });
+                }
+            }
+
+            generateScenery(count) {
+                this.scenery = [];
+                const types = ['hill', 'tree', 'bush'];
+                const greenVariants = ['#15803d', '#166534', '#14532d', '#047857', '#065f46'];
+                
+                for (let i = 0; i < count; i++) {
+                    const type = types[Math.floor(Math.random() * types.length)];
+                    this.scenery.push({
+                        angle: Math.random() * Math.PI * 2,
+                        type: type,
+                        size: 0.7 + Math.random() * 0.6,
+                        color: greenVariants[Math.floor(Math.random() * greenVariants.length)]
+                    });
+                }
+                
+                const typeOrder = { 'hill': 1, 'tree': 2, 'bush': 3 };
+                this.scenery.sort((a, b) => typeOrder[a.type] - typeOrder[b.type]);
+            }
+
+            showGameScreen() {
+                this.els.startScreen.classList.add('fade-out');
+                setTimeout(() => {
+                    this.els.startScreen.classList.add('hidden');
+                    this.els.startScreen.classList.remove('fade-out');
+                    this.els.gameScreen.classList.remove('hidden');
+                    this.els.gameScreen.classList.add('flex', 'fade-in');
+                    this.resizeCanvas();
+                    this.gameState = 'ready';
+                    this.updateButtonState();
+                }, 500);
+            }
+
+            updateButtonState() {
+                const btn = this.els.actionBtn;
+                if (this.gameState === 'ready') {
+                    btn.innerText = "Spiel Starten";
+                    btn.disabled = false;
+                    btn.classList.remove('btn-disabled');
+                } else if (this.gameState === 'countdown') {
+                    btn.innerText = "Hüpfen!";
+                    btn.disabled = true;
+                    btn.classList.add('btn-disabled');
+                } else if (this.gameState === 'playing') {
+                    btn.innerText = "Hüpfen!";
+                    btn.disabled = false;
+                    btn.classList.remove('btn-disabled');
+                }
+            }
+
+            handleAction() {
+                if (this.gameState === 'ready') {
+                    this.startCountdown();
+                } else if (this.gameState === 'playing' && !this.isJumping) {
+                    this.isJumping = true;
+                    this.jumpTimer = 0;
+                    this.jumps++;
+                }
+            }
+
+            startCountdown() {
+                this.gameState = 'countdown';
+                this.updateButtonState();
+                this.els.countdownOverlay.classList.remove('hidden');
+                let count = 3;
+                
+                const showNumber = () => {
+                    if (count > 0) {
+                        this.els.countdownText.innerText = count;
+                        this.els.countdownText.classList.remove('animate-pop');
+                        void this.els.countdownText.offsetWidth;
+                        this.els.countdownText.classList.add('animate-pop');
+                        count--;
+                        setTimeout(showNumber, 1000);
+                    } else {
+                        this.els.countdownOverlay.classList.add('hidden');
+                        this.gameState = 'playing';
+                        this.updateButtonState();
+                        this.lastTime = performance.now();
+                    }
+                };
+                showNumber();
+            }
+
+            showMilestone() {
+                this.els.milestoneText.innerText = `${this.laps} Runden!`;
+                
+                this.els.milestoneOverlay.classList.remove('hidden', 'fade-out');
+                this.els.milestoneOverlay.classList.add('fade-in');
+
+                if (this.milestoneTimeout) clearTimeout(this.milestoneTimeout);
+                if (this.milestoneHideTimeout) clearTimeout(this.milestoneHideTimeout);
+
+                this.milestoneTimeout = setTimeout(() => {
+                    this.els.milestoneOverlay.classList.remove('fade-in');
+                    this.els.milestoneOverlay.classList.add('fade-out');
+                    
+                    this.milestoneHideTimeout = setTimeout(() => {
+                        this.els.milestoneOverlay.classList.add('hidden');
+                    }, 500);
+                }, 2000);
+            }
+
+            updatePhysics(deltaTime, timestamp) {
+                this.clouds.forEach(cloud => {
+                    cloud.angle += cloud.speed * deltaTime;
+                });
+
+                if (this.gameState !== 'playing') return;
+
+                const prevBerthaAngle = this.berthaAngle;
+                this.berthaAngle += this.berthaSpeed * deltaTime;
+                
+                if (Math.floor(this.berthaAngle / (Math.PI * 2)) > Math.floor(prevBerthaAngle / (Math.PI * 2))) {
+                    this.laps++;
+                    this.berthaSpeed += 0.05;
+                    this.els.roundsDisplay.innerText = this.laps;
+                    
+                    if (this.laps % 5 === 0 && this.laps > 0) {
+                        this.showMilestone();
+                    }
+                }
+
+                this.foxAngle -= this.foxSpeed * deltaTime;
+
+                let currentJumpHeight = 0;
+                if (this.isJumping) {
+                    this.jumpTimer += deltaTime;
+                    if (this.jumpTimer >= this.jumpDuration) {
+                        this.isJumping = false;
+                        currentJumpHeight = 0;
+                    } else {
+                        const progress = this.jumpTimer / this.jumpDuration;
+                        currentJumpHeight = Math.sin(progress * Math.PI) * this.maxJumpHeight;
+                    }
+                }
+
+                const bRadius = this.circleRadius + this.characterOffset + currentJumpHeight;
+                this.berthaX = this.cx + bRadius * Math.sin(this.berthaAngle);
+                this.berthaY = this.cy - bRadius * Math.cos(this.berthaAngle);
+
+                const fRadius = this.circleRadius + this.characterOffset;
+                this.foxX = this.cx + fRadius * Math.sin(this.foxAngle);
+                this.foxY = this.cy - fRadius * Math.cos(this.foxAngle);
+
+                const distance = Math.hypot(this.berthaX - this.foxX, this.berthaY - this.foxY);
+
+                if (distance < this.collisionThreshold) {
+                    this.endGame();
+                }
+            }
+
+            endGame() {
+                this.gameState = 'gameover';
+                
+                const now = new Date();
+                const HH = String(now.getHours()).padStart(2, '0');
+                const mm = String(now.getMinutes()).padStart(2, '0');
+                const dd = String(now.getDate()).padStart(2, '0');
+                const MM = String(now.getMonth() + 1).padStart(2, '0');
+                const yy = String(now.getFullYear()).slice(-2);
+
+                this.els.summaryJumps.innerText = this.jumps;
+                this.els.summaryRounds.innerText = this.laps;
+                this.els.summaryTime.innerText = `${dd}.${MM}.${yy} • ${HH}:${mm} Uhr`;
+
+                this.els.summaryModal.classList.remove('hidden');
+                setTimeout(() => {
+                    this.els.summaryModal.classList.remove('opacity-0');
+                    this.els.summaryBox.classList.remove('scale-95');
+                    this.els.summaryBox.classList.add('scale-100');
+                }, 10);
+            }
+
+            restartGame() {
+                this.els.summaryModal.classList.add('opacity-0');
+                this.els.summaryBox.classList.remove('scale-100');
+                this.els.summaryBox.classList.add('scale-95');
+                
+                this.els.milestoneOverlay.classList.add('hidden');
+                this.els.milestoneOverlay.classList.remove('fade-in', 'fade-out');
+                if (this.milestoneTimeout) clearTimeout(this.milestoneTimeout);
+                if (this.milestoneHideTimeout) clearTimeout(this.milestoneHideTimeout);
+
+                setTimeout(() => {
+                    this.els.summaryModal.classList.add('hidden');
+                    
+                    this.laps = 0;
+                    this.jumps = 0;
+                    this.isJumping = false;
+                    this.jumpTimer = 0;
+                    this.berthaAngle = 0;
+                    this.foxAngle = Math.PI;
+                    this.berthaSpeed = this.baseSpeed;
+                    this.els.roundsDisplay.innerText = 0;
+                    
+                    this.generateFlowers(20);
+                    this.generateScenery(15);
+                    this.updateBackground();
+
+                    this.gameState = 'ready';
+                    this.updateButtonState();
+                }, 300);
+            }
+
+            resizeCanvas() {
+                const container = document.getElementById('canvas-container');
+                const w = container.clientWidth;
+                const h = container.clientHeight;
+                
+                this.gameCanvas.width = w;
+                this.gameCanvas.height = h;
+
+                this.cx = w / 2;
+                this.cy = h / 2;
+                this.circleRadius = Math.min(w, h) * 0.25;
+
+                this.characterOffset = this.circleRadius * 0.144;
+                this.maxJumpHeight = this.circleRadius * 0.472;
+                this.collisionThreshold = this.circleRadius * 0.266;
+                
+                this.berthaSize = this.circleRadius * 0.266;
+                this.foxWidth = this.circleRadius * 0.533;
+                this.foxHeight = this.circleRadius * 0.266;
+
+                this.bgCanvas.width = w;
+                this.bgCanvas.height = h;
+                this.updateBackground();
+            }
+
+            renderLoop(timestamp) {
+                if (!this.lastTime) this.lastTime = timestamp;
+                let deltaTime = (timestamp - this.lastTime) / 1000;
+                if (deltaTime > 0.1) deltaTime = 0.1;
+                this.lastTime = timestamp;
+
+                this.updatePhysics(deltaTime, timestamp);
+
+                this.gameCtx.clearRect(0, 0, this.gameCanvas.width, this.gameCanvas.height);
+
+                this.drawClouds();
+
+                if (this.bgCanvas.width > 0 && this.bgCanvas.height > 0) {
+                    this.gameCtx.drawImage(this.bgCanvas, 0, 0);
+                }
+     
+                this.drawCharacters(timestamp);
+
+                this.animationReq = requestAnimationFrame((ts) => this.renderLoop(ts));
+            }
+
+            updateBackground() {
+                this.bgCtx.clearRect(0, 0, this.bgCanvas.width, this.bgCanvas.height);
+    
+                const originalCtx = this.gameCtx;
+                this.gameCtx = this.bgCtx;
+    
+                this.drawMeadow();
+                this.drawScenery();
+                this.drawFlowers();
+    
+                this.gameCtx = originalCtx;
+            }
+
+            drawMeadow() {
+                const ctx = this.gameCtx;
+                ctx.save();
+    
+                ctx.beginPath();
+                ctx.arc(this.cx, this.cy, this.circleRadius, 0, Math.PI * 2);
+    
+                ctx.fillStyle = '#bbf7d0';
+                ctx.fill();
+    
+                ctx.strokeStyle = '#16a34a';
+                ctx.lineWidth = this.circleRadius * 0.111;
+                ctx.stroke();
+    
+                ctx.restore();
+            }
+
+            drawScenery() {
+                const ctx = this.gameCtx;
+                const sceneryOffset = this.circleRadius * 0.033;
+
+                this.scenery.forEach(item => {
+                    const r = this.circleRadius + sceneryOffset;
+                    const x = this.cx + r * Math.sin(item.angle);
+                    const y = this.cy - r * Math.cos(item.angle);
+
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(item.angle);
+
+                    const s = item.size * (this.circleRadius / 180);
+
+                    if (item.type === 'hill') {
+                        ctx.save();
+                        ctx.scale(1.2, 0.4);
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 24 * s, Math.PI, 0);
+                        ctx.fillStyle = '#16a34a';
+                        ctx.fill();
+                        ctx.restore();
+
+                    } else if (item.type === 'bush') {
+                        ctx.fillStyle = item.color;
+                        ctx.beginPath(); ctx.arc(0, -5 * s, 17 * s, 0, Math.PI * 2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(-12 * s, -2 * s, 12 * s, 0, Math.PI * 2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(12 * s, -2 * s, 12 * s, 0, Math.PI * 2); ctx.fill();
+
+                    } else if (item.type === 'tree') {
+                        ctx.fillStyle = '#78350f';
+                        ctx.fillRect(-6 * s, -55 * s, 12 * s, 55 * s);
+
+                        ctx.fillStyle = item.color;
+                        ctx.beginPath(); ctx.arc(0, -70 * s, 35 * s, 0, Math.PI * 2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(-22 * s, -58 * s, 22 * s, 0, Math.PI * 2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(22 * s, -58 * s, 22 * s, 0, Math.PI * 2); ctx.fill();
+                    }
+
+                    ctx.restore();
+                });
+            }
+
+            drawFlowers() {
+                const ctx = this.gameCtx;
+
+                this.flowers.forEach(flower => {
+                    const r = this.circleRadius * flower.radiusFactor;
+                    const x = this.cx + r * Math.sin(flower.angle);
+                    const y = this.cy - r * Math.cos(flower.angle);
+
+                    ctx.save();
+                    ctx.translate(x, y);
+
+                    const s = flower.size * (this.circleRadius / 180);
+
+                    ctx.fillStyle = flower.color;
+                    for (let i = 0; i < flower.petals; i++) {
+                        ctx.rotate((Math.PI * 2) / flower.petals);
+                        ctx.beginPath();
+                        ctx.arc(s * 0.9, 0, s * 0.8, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    ctx.fillStyle = '#fef08a';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, s * 0.6, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                });
+            }
+
+            drawClouds() {
+                const ctx = this.gameCtx;
+                
+                this.clouds.forEach(cloud => {
+                    const radius = this.circleRadius * cloud.distanceFactor;
+                    const x = this.cx + radius * Math.sin(cloud.angle);
+                    const y = this.cy - radius * Math.cos(cloud.angle);
+
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(cloud.angle);
+
+                    ctx.fillStyle = `rgba(255, 255, 255, ${cloud.opacity})`;
+                    const s = cloud.size * (this.circleRadius / 180);
+                    
+                    ctx.beginPath(); ctx.rect(-35 * s, 4 * s, 70 * s, 10 * s); ctx.fill();
+                    ctx.beginPath(); ctx.arc(0, 0, 22 * s, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(-20 * s, 4 * s, 15 * s, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(22 * s, 4 * s, 15 * s, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(-35 * s, 8 * s, 10 * s, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(35 * s, 8 * s, 10 * s, 0, Math.PI * 2); ctx.fill();
+
+                    ctx.restore();
+                });
+            }
+
+            drawCharacters(timestamp) {
+                const ctx = this.gameCtx;
+                const isMoving = this.gameState === 'playing';
+
+                const berthaBob = isMoving && !this.isJumping ? Math.abs(Math.sin(timestamp * 0.015)) * (this.circleRadius * 0.033) : 0;
+                const berthaTilt = isMoving && !this.isJumping ? Math.sin(timestamp * 0.015) * 0.08 : 0;
+                
+                const bRadiusRender = (this.gameState === 'playing' ? Math.hypot(this.berthaX - this.cx, this.berthaY - this.cy) : (this.circleRadius + this.characterOffset)) - berthaBob;
+                const bx = this.cx + bRadiusRender * Math.sin(this.berthaAngle);
+                const by = this.cy - bRadiusRender * Math.cos(this.berthaAngle);
+
+                ctx.save();
+                ctx.translate(bx, by);
+                ctx.rotate(this.berthaAngle + berthaTilt);
+                
+                ctx.drawImage(this.berthaImg, -this.berthaSize/2, -this.berthaSize/2, this.berthaSize, this.berthaSize);
+
+                ctx.restore();
+
+                const foxBob = isMoving ? Math.abs(Math.sin(timestamp * 0.018)) * (this.circleRadius * 0.028) : 0;
+                const foxTilt = isMoving ? Math.sin(timestamp * 0.018) * 0.1 : 0;
+                
+                const fRadiusRender = (this.circleRadius + this.characterOffset) - foxBob;
+                const fx = this.cx + fRadiusRender * Math.sin(this.foxAngle);
+                const fy = this.cy - fRadiusRender * Math.cos(this.foxAngle);
+
+                ctx.save();
+                ctx.translate(fx, fy);
+                ctx.rotate(this.foxAngle + foxTilt);
+                ctx.scale(1, 1);
+                
+                ctx.drawImage(this.foxImg, -this.foxWidth/2, -this.foxHeight/2, this.foxWidth, this.foxHeight);
+
+                ctx.restore();
+            }
+        }
+
+        const app = new BerthaHopGame();
+    </script>
+</body>
+</html>
